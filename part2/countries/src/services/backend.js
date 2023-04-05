@@ -1,7 +1,7 @@
 import axios from 'axios'
 const countriesUrl = 'https://restcountries.com/v3.1/'
 const weatherUrl = 'https://api.openweathermap.org/data/2.5/weather?' //lat={lat}&lon={lon}&appid={API key}'
-const apiKey = process.env.REACT_APP_API_KEY || "localhost:3001"
+const apiKey = process.env.REACT_APP_API_KEY
 
 const getCountryNames = (prefix) => {
 	return axios.get(`${countriesUrl}/all?fields=name`).then(response => {
