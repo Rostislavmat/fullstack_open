@@ -1,7 +1,9 @@
 import axios from 'axios'
-const baseUrl = process.env.BACKEND_BASE_URI
+const baseUrl = '/api/notes'
 
 const getAll = () => {
+	console.log("Trying to ask for ", baseUrl)
+
 	return axios.get(baseUrl).then(response => response.data)
 }
 
