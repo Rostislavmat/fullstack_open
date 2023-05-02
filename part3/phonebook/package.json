@@ -7,7 +7,8 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:ui": "rm -rf build && cd ../phonebook_frontend && npm run genBuild && cp -r build ../phonebook",
+    "install:ui": "npm install && cd ../phonebook_frontend && npm install",
+    "build:ui": "rm -rf build && cd ../phonebook_frontend && npm run build && cp -r build ../phonebook",
     "full": "npm run build:ui && npm start"
   },
   "author": "Rastsislau",
