@@ -1,110 +1,116 @@
 const express = require('express')
 const app = express()
-var morgan = require('morgan')
+const morgan = require('morgan')
 const cors = require('cors')
-
 
 app.use(cors())
 app.use(express.json())
 app.use(express.static('build'))
 
-app.use(morgan('dev', {
-    skip: function (req, res) { return res.statusCode < 400 }
+app.use(morgan(function (tokens, req, res) {
+  const initial = [
+    tokens.method(req, res),
+    tokens.url(req, res),
+    tokens.status(req, res),
+    tokens.res(req, res, 'content-length'), '-',
+    tokens['response-time'](req, res), 'ms'
+  ]
+  if (req.method === 'POST') {
+    initial.push(JSON.stringify(req.body))
+  }
+  return initial.join(' ')
 }))
-
-app.use(morgan('tiny'))
-
 
 require('dotenv').config()
 
 const Phone = require('./models/phone')
 
 const errorHandler = (error, request, response, next) => {
-    console.error(error.message)
+  console.error(error.message)
 
-    if (error.name === 'CastError') {
-        return response.status(400).send({ error: 'malformatted id' })
-    }
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  }
 
-    next(error)
+  next(error)
 }
 
 const unknownEndpoint = (request, response) => {
-    response.status(404).send({ error: 'unknown endpoint' })
+  response.status(404).send({ error: 'unknown endpoint' })
 }
 
 app.get('/api/persons', (req, res) => {
-    Phone.find({}).then(notes => {
-        res.json(notes)
+  Phone.find({}).then(notes => {
+    res.json(notes)
+  })
+})
+
+app.get('/api/persons/:id', (request, response, next) => {
+  Phone.findById(request.params.id)
+    .then(note => {
+      if (note) {
+        response.json(note)
+      } else {
+        response.status(404).end()
+      }
     })
+    .catch(error => next(error))
 })
 
-app.get('/api/persons/:id', (request, response) => {
-    Phone.findById(request.params.id)
-        .then(note => {
-            if (note) {
-                response.json(note)
-            } else {
-                response.status(404).end()
-            }
-        })
-        .catch(error => next(error))
+app.delete('/api/persons/:id', (request, response, next) => {
+  Phone.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-    Phone.findByIdAndRemove(request.params.id)
-        .then(result => {
-            response.status(204).end()
-        })
-        .catch(error => next(error))
+app.get('/info', async (req, res) => {
+  const count = await Phone.countDocuments({})
+  const timeNow = new Date().toTimeString()
+  res.send(`<h1> Phonebook has info for ${count} people </h1> <h2> ${timeNow} </h2>`)
 })
-
-app.get('/info', (req, res) => {
-    const bookLen = phones.length
-    const timeNow = new Date().toTimeString()
-    res.send(`<h1> Phonebook has info for ${bookLen} people </h1> <h2> ${timeNow} </h2>`)
-}
-)
 
 app.put('/api/persons/:id', (request, response, next) => {
-    const body = request.body
+  const body = request.body
 
-    if (!body.name || !body.phone) {
-        return response.status(400).json({
-            error: 'data missing'
-        })
-    }
+  if (!body.name || !body.phone) {
+    return response.status(400).json({
+      error: 'data missing'
+    })
+  }
 
-    const phone = {
-        name: body.name,
-        phone: body.phone
-    }
+  const phone = {
+    name: body.name,
+    phone: body.phone
+  }
 
-    Phone.findByIdAndUpdate(request.params.id, phone, { new: true })
-        .then(updatedPhone => {
-            response.json(updatedPhone)
-        })
-        .catch(error => next(error))
+  Phone.findByIdAndUpdate(request.params.id, phone, { new: true, runValidators: true, context: 'query' })
+    .then(updatedPhone => {
+      response.json(updatedPhone)
+    })
+    .catch(error => next(error))
 })
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
+  const body = request.body
 
-    const body = request.body
-
-    if (!body.name || !body.phone) {
-        return response.status(400).json({
-            error: 'data missing'
-        })
-    }
-
-    const phone = new Phone({
-        name: body.name,
-        phone : body.phone
+  if (!body.name || !body.phone) {
+    return response.status(400).json({
+      error: 'data missing'
     })
+  }
 
-    phone.save().then(savedPhone => {
-        response.json(savedPhone)
-    })
+  const phone = new Phone({
+    name: body.name,
+    phone: body.phone
+  })
+
+  phone.save().then(savedPhone => {
+    response.json(savedPhone)
+  }).catch(error => next(error))
 })
 
 app.use(unknownEndpoint)
@@ -112,103 +118,5 @@ app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
+  console.log(`Server running on port ${PORT}`)
 })
-
-
-
-/*
-const express = require('express')
-const app = express()
-const cors = require('cors')
-require('dotenv').config()
-
-const Note = require('./models/note')
-
-const requestLogger = (request, response, next) => {
-    console.log('Method:', request.method)
-    console.log('Path:  ', request.path)
-    console.log('Body:  ', request.body)
-    console.log('---')
-    next()
-}
-
-const errorHandler = (error, request, response, next) => {
-    console.error(error.message)
-
-    if (error.name === 'CastError') {
-        return response.status(400).send({ error: 'malformatted id' })
-    }
-
-    next(error)
-}
-
-const unknownEndpoint = (request, response) => {
-    response.status(404).send({ error: 'unknown endpoint' })
-}
-
-app.use(cors())
-app.use(express.json())
-app.use(requestLogger)
-app.use(express.static('build'))
-
-
-app.get('/api/notes', (request, response) => {
-    Note.find({}).then(notes => {
-        response.json(notes)
-    })
-})
-
-app.post('/api/notes', (request, response) => {
-    const body = request.body
-
-    if (body.content === undefined) {
-        return response.status(400).json({ error: 'content missing' })
-    }
-
-    const note = new Note({
-        content: body.content,
-        important: body.important || false,
-    })
-
-    note.save().then(savedNote => {
-        response.json(savedNote)
-    })
-})
-
-app.get('/api/notes/:id', (request, response, next) => {
-    Note.findById(request.params.id)
-        .then(note => {
-            if (note) {
-                response.json(note)
-            } else {
-                response.status(404).end()
-            }
-        })
-        .catch(error => next(error))
-})
-
-app.delete('/api/notes/:id', (request, response, next) => {
-    Note.findByIdAndRemove(request.params.id)
-        .then(result => {
-            response.status(204).end()
-        })
-        .catch(error => next(error))
-})
-
-app.put('/api/notes/:id', (request, response, next) => {
-    const body = request.body
-
-    const note = {
-        content: body.content,
-        important: body.important,
-    }
-
-    Note.findByIdAndUpdate(request.params.id, note, { new: true })
-        .then(updatedNote => {
-            response.json(updatedNote)
-        })
-        .catch(error => next(error))
-})
-
-*/
