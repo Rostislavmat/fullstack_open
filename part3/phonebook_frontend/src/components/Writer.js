@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import backendService from '../services/backend'
-import Notification from './Notification'
 
 const Writer = ({ peopleState, flash }) => {
 
@@ -45,8 +44,16 @@ const Writer = ({ peopleState, flash }) => {
             else {
                 if (window.confirm(`Replace number of ${name}?`)) {
                     const id = existingEntry[0].id
-                    backendService.update(id, phoneObject).then(returnedPerson => setPeople(people.map(person => person.id === id ? returnedPerson : person)))
-                    flash('allGood', `${phoneObject.name} was edited.`)
+                    backendService.update(id, phoneObject)
+                        .then(returnedPerson => {
+                            setPeople(people.map(person => {
+                                return person.id === id ? returnedPerson : person
+                            }))
+                            flash('allGood', `${phoneObject.name} was edited.`)
+                        })
+                        .catch(error => {
+                            flash('allBad', error.response.data.error)
+                        })
                 }
                 else {
                     return
@@ -55,9 +62,14 @@ const Writer = ({ peopleState, flash }) => {
             
         }
         else {
-            backendService.create(phoneObject).then(person => setPeople(people.concat(person)))
-            setPeople(people.concat(phoneObject))
-            flash('allGood', `${phoneObject.name} was added.`)
+            backendService.create(phoneObject)
+                .then(person => {
+                    setPeople(people.concat(person))
+                    flash('allGood', `${phoneObject.name} was added.`)
+                })
+                .catch(error => {
+                    flash('allBad', error.response.data.error)
+                })
         }
 
 
